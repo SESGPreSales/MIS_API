@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import fetch from "node-fetch"
 
 const server = process.env.MIS_SERVER || "localhost";
 const port = process.env.MIS_PORT || "7002";
