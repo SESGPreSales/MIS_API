@@ -102,7 +102,7 @@ const getDetails = async (token, ticket) => {
                 brightnessLimit: res.items.successList[0].brightnessLimit
             };
             // console.log(final);
-            return final;
+            return res.items.successList[0];
         }
     } catch (error) {
         console.error(`Error getting details: ${error.message}`);
