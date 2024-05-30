@@ -32,63 +32,56 @@ var paneloffhex = new Uint8Array(paneloffToSend);
 const ecoSensor = [0xAA, 0x50, 0x01, 0x01, 0x00, 0x52]
 var ecoSensorhex = new Uint8Array(ecoSensor);
 
-// Ip address of the screen
-const host1 = '192.168.10.115'
+// // Ip address of the screen
+// const host1 = '192.168.10.115'
 
-let onOrOff = 0; //used to check the screen status
+// let onOrOff = 0; //used to check the screen status
 
 //Calls the test every 2 seconds
 //setInterval(()=> sendRj(host1, 1515, ecoSensorhex), 2000 )
 
 async function sendRj(host, port, hex) {
-    setTimeout(()=> {
-        // console.log('closing due to inactivity...')
-        obj.destroy()
-    }, 1000)
+    return new Promise((resolve, reject) => {
+        const obj = new Net.Socket();
 
-    // console.log('DEBUG : Starting', host, port, hex);
+        // Timeout to destroy the socket if no response
+        const timeoutId = setTimeout(() => {
+            console.log('closing due to inactivity...');
+            obj.destroy();
+            reject(new Error('Request timed out'));
+        }, 1000);
 
-    let obj = new Net.Socket();
+        obj.on('data', (data) => {
+            clearTimeout(timeoutId); // Clear the timeout on response
+            const buffer = Buffer.from(data);
+            const thirdLastByte = buffer[buffer.length - 3];
+            const secondLastByte = buffer[buffer.length - 2];
+            const toBeDecoded = `${thirdLastByte.toString(16)}${secondLastByte.toString(16)}`;
+            const dec = parseInt(toBeDecoded, 16);
 
-    // Listen for data from the server
-    obj.on('data', (data) => {
+            // console.log('Measured LUX at the screen: ', dec);
 
-        console.log('Received:', data);
-        const buffer = Buffer.from(data)
-        const thirdLastByte = buffer[buffer.length - 3];
-        const secondLastByte = buffer[buffer.length - 2];
-        const toBeDecoded = `${thirdLastByte.toString(16)}${secondLastByte.toString(16)}`
-        const dec = parseInt(toBeDecoded,16)
+            obj.destroy(); // Close the connection after receiving the data
+            resolve(dec); // Resolve the promise with the decoded value
+        });
 
-        console.log('Measured LUX at the screen : ',dec)
+        obj.on('error', (err) => {
+            clearTimeout(timeoutId);
+            console.error('Error:', err);
+            obj.destroy();
+            reject(err); // Reject the promise on error
+        });
 
-        obj.destroy(); // Close the connection after receiving the data
-        
-        return dec
-    });
-
-    // Listen for any errors
-    obj.on('error', (err) => {
-        console.error('Error:', err);
-        obj.destroy();
-    });
-
-    obj.on('close', () => {
-        // console.log('Connection closed');
-    });
-
-    obj.connect({ port: port, host: host }, () => {
-        console.log(`DEBUG : TCP connection established with the screen ${host}`);
-
-        setTimeout(() => {
+        obj.connect({ port: port, host: host }, () => {
+            // console.log(`DEBUG: TCP connection established with screen ${host}`);
             obj.write(hex, (err) => {
                 if (err) {
                     console.error('Write error:', err);
-                    return;
+                    reject(err);
                 }
-                console.log('DEBUG : Data written to server');
+                // console.log('DEBUG: Data written to server');
             });
-        }, 100);
+        });
     });
 }
 
@@ -152,7 +145,8 @@ const getDetails = async (token, ticket) => {
         };
 
         const lux = await sendRj(deviceIp, 1515, ecoSensorhex)
-
+        // console.log('NEW : Measured LUX at the screen : ',lux)
+        
         // console.log("DEBUG : request Body = ", JSON.stringify(detailBody));
         const response = await fetch(`${server}:${port}/MagicInfo/restapi/v2.0/rms/devices/current-display-info`, {
             method: "POST",
