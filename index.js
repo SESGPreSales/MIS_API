@@ -8,7 +8,7 @@ const user = process.env.MIS_USER || "none";
 const password = process.env.MIS_PASSWORD || "none";
 const deviceId = process.env.DEVICE_ID || "none";
 const timeout = process.env.TIMEOUT || 15000;
-const deviceIp = process.env.DEVICE_IP || "none";
+const deviceIp = process.env.DEVICE_IP || undefined;
 
 const authBody = {
     username: user,
@@ -143,8 +143,8 @@ const getDetails = async (token, ticket) => {
             deviceIds: [deviceId],
             requestId: ticket
         };
-
-        const lux = await sendRj(deviceIp, 1515, ecoSensorhex)
+        let lux = "no Info"
+        if (deviceIp !== undefined) {lux = await sendRj(deviceIp, 1515, ecoSensorhex)}
         // console.log('NEW : Measured LUX at the screen : ',lux)
         
         // console.log("DEBUG : request Body = ", JSON.stringify(detailBody));
